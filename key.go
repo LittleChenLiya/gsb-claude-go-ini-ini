@@ -32,6 +32,11 @@ type Key struct {
 	isAutoIncrement bool
 	isBooleanType   bool
 
+	// source records the data source from which the currently effective
+	// value of the key was last loaded. It is empty for keys loaded from
+	// in-memory data sources and for keys created programmatically.
+	source string
+
 	isShadow bool
 	shadows  []*Key
 

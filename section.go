@@ -82,13 +82,16 @@ func (s *Section) NewKey(name, val string) (*Key, error) {
 			}
 		} else {
 			s.keys[name].value = val
+			s.keys[name].source = s.f.currentSource
 			s.keysHash[name] = val
 		}
 		return s.keys[name], nil
 	}
 
 	s.keyList = append(s.keyList, name)
-	s.keys[name] = newKey(s, name, val)
+	key := newKey(s, name, val)
+	key.source = s.f.currentSource
+	s.keys[name] = key
 	s.keysHash[name] = val
 	return s.keys[name], nil
 }

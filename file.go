@@ -29,6 +29,10 @@ type File struct {
 	options     LoadOptions
 	dataSources []dataSource
 
+	// currentSource is the name of the data source being parsed, it is used
+	// for attributing keys with the origin of their effective values.
+	currentSource string
+
 	// Should make things safe, but sometimes doesn't matter.
 	BlockMode bool
 	lock      sync.RWMutex
@@ -294,6 +298,11 @@ func (f *File) reload(s dataSource) error {
 	}
 	defer r.Close()
 
+	if sf, ok := s.(sourceFile); ok {
+		f.currentSource = sf.name
+	} else {
+		f.currentSource = ""
+	}
 	return f.parse(r)
 }
 
