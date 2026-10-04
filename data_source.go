@@ -30,11 +30,18 @@ var (
 // dataSource is an interface that returns object which can be read and closed.
 type dataSource interface {
 	ReadCloser() (io.ReadCloser, error)
+	// Name returns a human-readable name of the data source,
+	// e.g. the file path for file sources.
+	Name() string
 }
 
 // sourceFile represents an object that contains content on the local file system.
 type sourceFile struct {
 	name string
+}
+
+func (s sourceFile) Name() string {
+	return s.name
 }
 
 func (s sourceFile) ReadCloser() (_ io.ReadCloser, err error) {
@@ -46,6 +53,10 @@ type sourceData struct {
 	data []byte
 }
 
+func (s *sourceData) Name() string {
+	return "<data>"
+}
+
 func (s *sourceData) ReadCloser() (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewReader(s.data)), nil
 }
@@ -53,6 +64,10 @@ func (s *sourceData) ReadCloser() (io.ReadCloser, error) {
 // sourceReadCloser represents an input stream with Close method.
 type sourceReadCloser struct {
 	reader io.ReadCloser
+}
+
+func (s *sourceReadCloser) Name() string {
+	return "<reader>"
 }
 
 func (s *sourceReadCloser) ReadCloser() (io.ReadCloser, error) {

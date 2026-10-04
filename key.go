@@ -32,6 +32,10 @@ type Key struct {
 	isAutoIncrement bool
 	isBooleanType   bool
 
+	// source is the index of the data source the effective value came from,
+	// or -1 when the value was set outside of loading (e.g. via SetValue).
+	source int
+
 	isShadow bool
 	shadows  []*Key
 
@@ -41,9 +45,10 @@ type Key struct {
 // newKey simply return a key object with given values.
 func newKey(s *Section, name, val string) *Key {
 	return &Key{
-		s:     s,
-		name:  name,
-		value: val,
+		s:      s,
+		name:   name,
+		value:  val,
+		source: -1,
 	}
 }
 
@@ -68,6 +73,7 @@ func (k *Key) addShadow(val string) error {
 
 	shadow := newKey(k.s, k.name, val)
 	shadow.isShadow = true
+	shadow.source = k.source
 	k.shadows = append(k.shadows, shadow)
 	return nil
 }
@@ -841,4 +847,7 @@ func (k *Key) SetValue(v string) {
 
 	k.value = v
 	k.s.keysHash[k.name] = v
+	// The new value did not come from a data source, so its provenance
+	// is unknown.
+	k.source = -1
 }

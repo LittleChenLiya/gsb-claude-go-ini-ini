@@ -488,6 +488,7 @@ func (f *File) parse(reader io.Reader) (err error) {
 					if err != nil {
 						return err
 					}
+					key.source = f.curSource
 					key.Comment = strings.TrimSpace(p.comment.String())
 					p.comment.Reset()
 					continue
@@ -520,6 +521,7 @@ func (f *File) parse(reader io.Reader) (err error) {
 			return err
 		}
 		key.isAutoIncrement = isAutoIncr
+		key.source = f.curSource
 		key.Comment = strings.TrimSpace(p.comment.String())
 		p.comment.Reset()
 		lastRegularKey = key

@@ -39,6 +39,11 @@ type File struct {
 	// This meta list is only used with non-unique section names are allowed.
 	sectionIndexes []int
 
+	// curSource is the index of the data source currently being parsed,
+	// or -1 when no data source is being parsed. It is used to record the
+	// provenance of each effective key value.
+	curSource int
+
 	// Actual data is stored here.
 	sections map[string][]*Section
 
@@ -63,6 +68,7 @@ func newFile(dataSources []dataSource, opts LoadOptions) *File {
 		dataSources: dataSources,
 		sections:    make(map[string][]*Section),
 		options:     opts,
+		curSource:   -1,
 	}
 }
 
@@ -287,20 +293,22 @@ func (f *File) DeleteSectionWithIndex(name string, index int) error {
 	return nil
 }
 
-func (f *File) reload(s dataSource) error {
+func (f *File) reload(s dataSource, idx int) error {
 	r, err := s.ReadCloser()
 	if err != nil {
 		return err
 	}
 	defer r.Close()
 
+	f.curSource = idx
+	defer func() { f.curSource = -1 }()
 	return f.parse(r)
 }
 
 // Reload reloads and parses all data sources.
 func (f *File) Reload() (err error) {
-	for _, s := range f.dataSources {
-		if err = f.reload(s); err != nil {
+	for i, s := range f.dataSources {
+		if err = f.reload(s, i); err != nil {
 			// In loose mode, we create an empty default section for nonexistent files.
 			if os.IsNotExist(err) && f.options.Loose {
 				_ = f.parse(bytes.NewBuffer(nil))
