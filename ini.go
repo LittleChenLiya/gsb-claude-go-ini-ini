@@ -125,6 +125,9 @@ type LoadOptions struct {
 	AllowNonUniqueSections bool
 	// AllowDuplicateShadowValues indicates whether values for shadowed keys should be deduplicated.
 	AllowDuplicateShadowValues bool
+	// SensitiveKeys is a list of key name patterns whose values are redacted in provenance output.
+	// Matching is case-insensitive.
+	SensitiveKeys []string
 }
 
 // DebugFunc is the type of function called to log parse events.
