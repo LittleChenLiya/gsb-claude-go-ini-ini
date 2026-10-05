@@ -36,6 +36,15 @@ type Key struct {
 	shadows  []*Key
 
 	nestedValues []string
+
+	// origins records where each value of this key came from, in the order in
+	// which the values were parsed (oldest first). The last entry is the
+	// origin of the current effective value of the key. It is populated only
+	// while parsing and never changes the semantics of value lookups.
+	origins []ValueOrigin
+	// isSynthetic marks keys created on demand (via Section.Key) rather than
+	// parsed from a data source.
+	isSynthetic bool
 }
 
 // newKey simply return a key object with given values.
@@ -45,6 +54,16 @@ func newKey(s *Section, name, val string) *Key {
 		name:  name,
 		value: val,
 	}
+}
+
+// recordOrigin appends the current parse position as an origin of the value.
+func (k *Key) recordOrigin(val string) {
+	if k == nil || k.s == nil || k.s.f == nil || !k.s.f.parsing {
+		return
+	}
+	o := k.s.f.currentOrigin(k.s.name, k.name)
+	o.Value = val
+	k.origins = append(k.origins, o)
 }
 
 func (k *Key) addShadow(val string) error {
@@ -68,6 +87,7 @@ func (k *Key) addShadow(val string) error {
 
 	shadow := newKey(k.s, k.name, val)
 	shadow.isShadow = true
+	shadow.recordOrigin(val)
 	k.shadows = append(k.shadows, shadow)
 	return nil
 }

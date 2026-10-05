@@ -48,6 +48,10 @@ type parser struct {
 	isEOF   bool
 	count   int
 	comment *bytes.Buffer
+
+	// physicalLine is the 1-based physical line number of the line returned
+	// by the most recent readUntil call.
+	physicalLine int
 }
 
 func (p *parser) debug(format string, args ...interface{}) {
@@ -178,6 +182,7 @@ func (p *parser) readMultilines(line, val, valQuote string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		p.physicalLine += bytes.Count(data, []byte{'\n'})
 		next := string(data)
 
 		pos := strings.LastIndex(next, valQuote)
@@ -211,6 +216,7 @@ func (p *parser) readContinuationLines(val string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		p.physicalLine += bytes.Count(data, []byte{'\n'})
 		next := strings.TrimSpace(string(data))
 
 		if len(next) == 0 {
@@ -341,6 +347,7 @@ func (p *parser) readPythonMultilines(line string, bufferSize int) (string, erro
 			p.debug("readPythonMultilines: failed to skip to the end, returning error")
 			return "", err
 		}
+		p.physicalLine += bytes.Count(peekData, []byte{'\n'})
 
 		line += "\n" + peekMatches[0]
 	}
@@ -348,6 +355,8 @@ func (p *parser) readPythonMultilines(line string, bufferSize int) (string, erro
 
 // parse parses data through an io.Reader.
 func (f *File) parse(reader io.Reader) (err error) {
+	f.parsing = true
+	defer func() { f.parsing = false }()
 	p := newParser(reader, parserOptions{
 		IgnoreContinuation:          f.options.IgnoreContinuation,
 		IgnoreInlineComment:         f.options.IgnoreInlineComment,
@@ -403,6 +412,13 @@ func (f *File) parse(reader io.Reader) (err error) {
 		if err != nil {
 			return err
 		}
+		// Count completed lines; an unterminated final line still starts a
+		// new line, so add one when the chunk does not end with a newline.
+		p.physicalLine += bytes.Count(line, []byte{'\n'})
+		if len(line) > 0 && line[len(line)-1] != '\n' {
+			p.physicalLine++
+		}
+		f.curLine = p.physicalLine
 
 		if f.options.AllowNestedValues &&
 			isLastValueEmpty && len(line) > 0 {
@@ -513,6 +529,9 @@ func (f *File) parse(reader io.Reader) (err error) {
 		if err != nil {
 			return err
 		}
+		// Reading the value may consume continuation or multi-line lines, so
+		// attribute the key to the last physical line its value occupies.
+		f.curLine = p.physicalLine
 		isLastValueEmpty = len(value) == 0
 
 		key, err := section.NewKey(kname, value)

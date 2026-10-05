@@ -125,6 +125,13 @@ type LoadOptions struct {
 	AllowNonUniqueSections bool
 	// AllowDuplicateShadowValues indicates whether values for shadowed keys should be deduplicated.
 	AllowDuplicateShadowValues bool
+	// ParentSectionKey is the key name used by a section to explicitly
+	// declare a parent section it inherits from (e.g. "parent = base").
+	// When empty, only dot-separated child sections inherit from ancestors.
+	ParentSectionKey string
+	// SensitiveKeys lists key names whose values must never be exposed by
+	// the provenance API. The keys themselves still work normally with Get.
+	SensitiveKeys []string
 }
 
 // DebugFunc is the type of function called to log parse events.

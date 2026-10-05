@@ -83,12 +83,14 @@ func (s *Section) NewKey(name, val string) (*Key, error) {
 		} else {
 			s.keys[name].value = val
 			s.keysHash[name] = val
+			s.keys[name].recordOrigin(val)
 		}
 		return s.keys[name], nil
 	}
 
 	s.keyList = append(s.keyList, name)
 	s.keys[name] = newKey(s, name, val)
+	s.keys[name].recordOrigin(val)
 	s.keysHash[name] = val
 	return s.keys[name], nil
 }
@@ -169,6 +171,7 @@ func (s *Section) Key(name string) *Key {
 		// It's OK here because the only possible error is empty key name,
 		// but if it's empty, this piece of code won't be executed.
 		key, _ = s.NewKey(name, "")
+		key.isSynthetic = true
 		return key
 	}
 	return key

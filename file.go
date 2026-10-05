@@ -42,6 +42,16 @@ type File struct {
 	// Actual data is stored here.
 	sections map[string][]*Section
 
+	// Parse position used while parsing data sources, so every key value can
+	// remember where it came from. These fields have no effect on lookups.
+	parsing   bool
+	curSource int
+	curLine   int
+
+	// Sensitive keys are keys whose values must never be exposed through the
+	// provenance API, key names are normalized the same way as regular keys.
+	sensitiveKeys map[string]struct{}
+
 	NameMapper
 	ValueMapper
 }
@@ -58,11 +68,23 @@ func newFile(dataSources []dataSource, opts LoadOptions) *File {
 		opts.ChildSectionDelimiter = "."
 	}
 
+	sensitive := make(map[string]struct{}, len(opts.SensitiveKeys))
+	normalize := func(name string) string {
+		if opts.Insensitive || opts.InsensitiveKeys {
+			return strings.ToLower(name)
+		}
+		return name
+	}
+	for _, name := range opts.SensitiveKeys {
+		sensitive[normalize(name)] = struct{}{}
+	}
+
 	return &File{
-		BlockMode:   true,
-		dataSources: dataSources,
-		sections:    make(map[string][]*Section),
-		options:     opts,
+		BlockMode:     true,
+		dataSources:   dataSources,
+		sections:      make(map[string][]*Section),
+		options:       opts,
+		sensitiveKeys: sensitive,
 	}
 }
 
@@ -294,12 +316,14 @@ func (f *File) reload(s dataSource) error {
 	}
 	defer r.Close()
 
+	f.curLine = 0
 	return f.parse(r)
 }
 
 // Reload reloads and parses all data sources.
 func (f *File) Reload() (err error) {
-	for _, s := range f.dataSources {
+	for i, s := range f.dataSources {
+		f.curSource = i
 		if err = f.reload(s); err != nil {
 			// In loose mode, we create an empty default section for nonexistent files.
 			if os.IsNotExist(err) && f.options.Loose {
